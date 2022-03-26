@@ -1,64 +1,99 @@
-import {useState} from 'react';
-import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View, Button } from 'react-native';
-import { ScrollView } from 'react-native';
-import { FlatList } from 'react-native';
+import { useState } from 'react';
+import { StyleSheet, Text, View, ActivityIndicator, ScrollView, Button } from 'react-native';
+import SearchForm from './components/SearchForm';
+import Header from './components/Header'
+import Movie from './components/Movie'
 
-
-const Item = ({item: {produit, fabricant}}) => {
-  return <View style={{flexDirection:"row"}}>
-    <Text style={{fontWeight: "bold"}}>Produit </Text>
-    <Text> {produit}</Text>
-    <Text style={{fontWeight: "bold", paddingHorizontal: 10}}>Fabricant</Text>
-    <Text>{fabricant}</Text>
-  </View>
-}
-export default function App() {
-  const [items, setItems] = useState([]);
-
-  const fetchMore = () => {
-    // const url = "https://amazon-lionel.herokuapp.com?nb=500";
-    const url = "https://amazon-lionel.herokuapp.com";
-    
-    fetch(`${url}`)
-      .then(resp=> resp.json())
-      .then(newItems => {
-        setItems(items.concat(newItems))
-      })
-    
-      console.log(items.length)
+//regarder la solution de labo4
+const App = () => {
+  const initialState = {
+    form: {
+        title:"",
+        staring: "",
+        director: "",
+        genre: "",
+        releaseDate: "",
+        duration: ""
+    },
+    movies: [],
+    view: "search"
   }
-  const Item = ({ fabricant, produit }) => (
-    <View style={styles.container}>
-      <Text >{fabricant} {produit}</Text>
-    </View>
-  );
-  const renderItem = ({ item }) => (
-    <Item fabricant={item.fabricant} produit={item.produit} />
-  );
 
-  return (
-    <View style={styles.container}>
-        <Button title="PLUUUS" onPress={fetchMore}/>
-        {/* <ScrollView style={styles.viewContainer}>
-          {items.map( (item, index) => <Item item={item} key={index}/>)}
-        </ScrollView> */}
-        {items.length == 0 && <Text>Bonjour, cette aplication affiche des produits amazon quand vous presser le button</Text>}
-        <FlatList style={styles.viewContainer} data={items} renderItem={renderItem} keyExtractor={item => item.id}>
-        </FlatList>
+
+  const [state, setState] = useState(initialState)
+
+  const onSearch = () => {
+        setState({...state, view: "load"})
+        const url = "https://movies-420kbc-lg.herokuapp.com/";
+
+        const params = Object.keys(state.form)
+          .filter((k => state.form[k]))
+          .map(field => `${field}=${state.form[field]}`)
+          .join("&") //"title=&director=Ridley"
+
+        fetch(`${url}?${params}`)
+            .then(resp => resp.json())
+            .then(movies => {
+                setState({...state, movies, view: "results"})
+                
+        })
+  }
+
+
+  const onCancel = ()=>{
+    setState(initialState);
+  }
+  
+  const onBackToResults = ()=>{
+    setState({...state, view:"results"});
+  }
+
+  const onBackToSearch = () =>{
+    setState({...state, view:"search"});
+  }
+
+  // on edit retourne une fonction avec le paramettre value
+  const onEdit = (field) => (value) => {
+    const newForm = state.form;
+    newForm[field] = value;
+
+    const newState = {...state, form:{...state.form, [`${field}`]: value}}
+    setState(newState)
+  }
+
+  let mainView = null;
+  if(state.view === "search" ){
+    mainView =  <SearchForm {...state.form} onCancel={onCancel} onSearch={onSearch} onEdit={onEdit} onBackToResults={onBackToResults}/>
+  }
+  if(state.view === "load"){
+    mainView = <ActivityIndicator size="large" color="#00ff00"/>
+  }
+  if(state.view === "results"){
+    mainView = <ScrollView>
+      <Button title="Back to search" onPress={onBackToSearch}/>
+         {state.movies.length == 0 && <Text>Aucun résultats </Text>}
+         {/* si y il a pas de resultat on affiche aucun resultat */}
+         {state.movies.map((m)=> <Movie {...m} />)}
+     </ScrollView>
+  }
+  return <View>
+        <Header title="Lionel Movie Database"/>
+        {mainView}
     </View>
-  );
 }
+export default App;
 
 const styles = StyleSheet.create({
-  viewContainer: {
-    flex: 1,
-  },
   container: {
-    flex: 1,
-    backgroundColor: '#fff',
+    paddingTop: 23,
+  },
+  flexContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingTop: 10,
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingTop: 20
+  },
+  button: {
+    width: '45%'
   },
 });
